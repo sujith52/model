@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Insurance Fraud Detection</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 0; }
+        h1 { text-align: center; padding: 20px; color: #2c3e50; }
+        .container { display: flex; gap: 20px; padding: 20px; }
+        .box { flex: 1; background: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .drop-zone { border: 2px dashed #3498db; padding: 40px; text-align: center; color: #3498db; cursor: pointer; }
+        .drop-zone.dragover { background: #ecf6ff; }
+        button { margin-top: 15px; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; }
+        button:hover { background: #2980b9; }
+        .result { margin-top: 15px; background: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 14px; white-space: pre-wrap; }
+        .status { font-weight: bold; margin-top: 10px; color: #27ae60; }
+    </style>
+</head>
+<body>
+    <h1>AI-Driven Insurance Fraud Detection System</h1>
+    <div class="container">
+        <div class="box">
+            <h2>Upload Dataset</h2>
+            <div id="dropZone" class="drop-zone">Drag & Drop CSV OR Click to Select</div>
+            <input type="file" id="fileInput" accept=".csv" hidden>
+            <button onclick="uploadFile()">Analyze Fraud</button>
+            <div id="uploadStatus" class="status"></div>
+        </div>
+        <div class="box">
+            <h2>Analysis Output</h2>
+            <div id="result" class="result">Waiting for analysis...</div>
+            <button id="downloadBtn" style="display:none; background:#27ae60;">Download Results (.CSV)</button>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById("dropZone");
+        const fileInput = document.getElementById("fileInput");
+        let selectedFile = null;
+    
+        dropZone.addEventListener("click", () => fileInput.click());
+        fileInput.addEventListener("change", () => { selectedFile = fileInput.files[0]; dropZone.innerText = selectedFile.name; });
+        dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("dragover"); });
+        dropZone.addEventListener("drop", (e) => { e.preventDefault(); dropZone.classList.remove("dragover"); selectedFile = e.dataTransfer.files[0]; dropZone.innerText = selectedFile.name; });
+        async function uploadFile() {
+    if (!selectedFile) { alert("Please select a CSV file first!"); return; }
+    
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    document.getElementById("uploadStatus").innerText = "Analyzing with XGBoost ML Model...";
+
+    try {
+        const response = await fetch("/api/analyze", { method: "POST", body: formData });
+        
+        // --- Start of fix ---
+        // Check if the server responded with an error status code (like 400 or 500)
+        if (!response.ok) {
+            // Get the error details from the server's JSON response
+            const errorData = await response.json();
+            const errorMessage = errorData.error || "An unknown error occurred.";
+            
+            // Display a clear failure message to the user
+            document.getElementById("uploadStatus").innerText = "Analysis Failed ❌";
+            document.getElementById("result").innerText = `Error: ${errorMessage}`;
+            
+            // Hide the download button since there are no results
+            document.getElementById("downloadBtn").style.display = "none";
+            return; // Stop further execution
+        }
+        // --- End of fix ---
+
+        const data = await response.json();
+        
+        document.getElementById("uploadStatus").innerText = "Analysis Completed ✅";
+        
+        let resultHTML = `
+            <div style="text-align: left; padding: 10px;">
+                <strong>Analysis Summary:</strong><br>
+                Total Records: ${data.total_rows}<br>
+                Fraud Cases Detected: <span style="color:red">${data.fraud_cases}</span><br>
+                Safe Cases Detected: <span style="color:green">${data.safe_cases}</span>
+            </div>`;
+
+        document.getElementById("result").innerHTML = resultHTML;
+        
+        const btn = document.getElementById("downloadBtn");
+        btn.style.display = "block";
+        btn.onclick = () => window.location.href = `/api/download/${data.output_file_id}`;
+    } catch (e) { 
+        document.getElementById("uploadStatus").innerText = "Analysis Failed ❌";
+        document.getElementById("result").innerText = "An unexpected client-side error occurred.";
+    }
+    }
+    </script>
+</body>
+</html>
