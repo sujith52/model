@@ -1,91 +1,59 @@
-# ==========================================================
-# FILE PATH (TOP PRIORITY)
-# insurance_fraud_detection/app/main.py
-# ==========================================================
-
+import os
+import threading
+import webbrowser
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-import threading
-import webbrowser
 
-# Import API router (we will create this next)
+# Import API router
 from app.api.routes import router as api_router
-import os
-from fastapi.staticfiles import StaticFiles
 
-# 1. Find where this current file (main.py) is located
-current_file_path = os.path.abspath(__file__)
-# 2. Find the directory containing main.py
-current_dir = os.path.dirname(current_file_path)
-# 3. Create a reliable path to the static folder
-static_dir = os.path.join(current_dir, "static")
-
-# Only mount if the directory actually exists to avoid the RuntimeError
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-else:
-    print(f"❌ Error: Static directory NOT found at: {static_dir}")
-
-# ==========================================================
-# FASTAPI APP INITIALIZATION
-# ==========================================================
-
+# 1. INITIALIZE THE APP FIRST (Fixes NameError)
 app = FastAPI(
     title="AI-Driven Insurance Fraud Detection",
     description="Insurance Fraud Detection using Machine Learning (SVM & XGBoost)",
     version="1.0.0"
 )
 
+# 2. SETUP PATHS
+# Use absolute paths to ensure Render finds the folders correctly
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+static_dir = os.path.join(BASE_DIR, "static")
+template_dir = os.path.join(BASE_DIR, "templates")
 
-# ==========================================================
-# TEMPLATE & STATIC FILE CONFIG
-# ==========================================================
+# 3. CONFIGURATION
+templates = Jinja2Templates(directory=template_dir)
 
-templates = Jinja2Templates(directory="app/templates")
+# Only mount if the directory actually exists
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+else:
+    print(f"⚠️ Warning: Static directory NOT found at: {static_dir}")
 
-app.mount(
-    "/static",
-    StaticFiles(directory="app/static"),
-    name="static"
-)
-
-
-# ==========================================================
-# INCLUDE API ROUTES
-# ==========================================================
-
+# 4. INCLUDE ROUTES
 app.include_router(api_router)
 
-
-# ==========================================================
-# HOME ROUTE → LOAD index.html
-# ==========================================================
-
+# 5. HOME ROUTE
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse(
-        "index.html",
+        "index.html", 
         {"request": request}
     )
 
-
-# ==========================================================
-# AUTO-OPEN BROWSER (DEMO FRIENDLY)
-# ==========================================================
-
+# 6. AUTO-OPEN BROWSER (Local Only)
 def open_browser():
-    webbrowser.open("http://127.0.0.1:8000")
+    # This will silently do nothing on Render, which is fine
+    try:
+        webbrowser.open("http://127.0.0.1:8000")
+    except:
+        pass
 
 @app.on_event("startup")
 def startup_event():
     threading.Timer(1.5, open_browser).start()
 
-
-# ==========================================================
-# RUN USING PYTHON (OPTIONAL)
-# ==========================================================
-
+# 7. RUN LOGIC
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
