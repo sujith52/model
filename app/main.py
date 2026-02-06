@@ -11,7 +11,21 @@ import webbrowser
 
 # Import API router (we will create this next)
 from app.api.routes import router as api_router
+import os
+from fastapi.staticfiles import StaticFiles
 
+# 1. Find where this current file (main.py) is located
+current_file_path = os.path.abspath(__file__)
+# 2. Find the directory containing main.py
+current_dir = os.path.dirname(current_file_path)
+# 3. Create a reliable path to the static folder
+static_dir = os.path.join(current_dir, "static")
+
+# Only mount if the directory actually exists to avoid the RuntimeError
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+else:
+    print(f"❌ Error: Static directory NOT found at: {static_dir}")
 
 # ==========================================================
 # FASTAPI APP INITIALIZATION
