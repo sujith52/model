@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Pre-processing Portal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        /* Navigation Bar Styles */
+        .navbar {
+            background-color: #2c3e50;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-brand { font-size: 1.5rem; font-weight: bold; }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            padding: 8px 15px;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+        .btn-outline-light-custom {
+            border: 1px solid #ffffff;
+            color: #ffffff !important;
+        }
+        .btn-outline-light-custom:hover {
+            background: #ffffff;
+            color: #2c3e50 !important;
+        }
+
+        /* Drop Zone Styles */
+        #drop-zone {
+            border: 2px dashed #007bff;
+            border-radius: 10px;
+            padding: 60px 40px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        #drop-zone.dragover {
+            background: #e2e6ea;
+            border-color: #0056b3;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+    <nav style="background: #2c3e50; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size: 1.5rem; font-weight: bold;">🛡️ Fraud Detection System</div>
+        <div style="display: flex; gap: 15px;">
+            <a href="/" style="color: white; text-decoration: none; padding: 8px 12px;">Home</a>
+            <a href="/clean" style="color: white; text-decoration: none; padding: 8px 12px;">Data Cleaning</a>
+            
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h2 class="mb-0">Insurance Data Cleaning System</h2>
+            </div>
+            <div class="card-body">
+                <p class="text-center text-muted">Upload legacy CSV files to fix missing values, remove duplicates, and normalize headers.</p>
+                <div id="drop-zone" class="mt-4">
+                    <p class="mb-0 fs-5">Drag & Drop your messy CSV file here</p>
+                    <p class="text-muted small">or click to browse your computer</p>
+                    <input type="file" id="file-input" hidden accept=".csv">
+                </div>
+                
+                <div id="file-info" class="mt-3 text-center font-weight-bold text-primary"></div>
+                
+                <button id="clean-btn" class="btn btn-success w-100 mt-4 py-3 fs-5" style="display: none;">
+                    🚀 Clean & Download Dataset
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const cleanBtn = document.getElementById('clean-btn');
+        const fileInfo = document.getElementById('file-info');
+        let selectedFile;
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFile(e.dataTransfer.files[0]);
+        };
+
+        function handleFile(file) {
+            if (file && file.name.endsWith('.csv')) {
+                selectedFile = file;
+                fileInfo.innerText = "📁 Selected: " + file.name;
+                cleanBtn.style.display = 'block';
+            } else {
+                alert("Please upload a valid CSV file.");
+            }
+        }
+
+        cleanBtn.onclick = async () => {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            cleanBtn.innerText = "⏳ Cleaning Data... Please wait...";
+            cleanBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/clean-process', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = "cleaned_insurance_data.csv";
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    cleanBtn.innerText = "✅ Success! File Downloaded";
+                } else {
+                    alert("Cleaning failed. Check server logs.");
+                    cleanBtn.innerText = "Clean & Download Dataset";
+                    cleanBtn.disabled = false;
+                }
+            } catch (err) {
+                alert("An error occurred during processing.");
+                cleanBtn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
